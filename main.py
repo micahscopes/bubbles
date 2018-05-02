@@ -8,7 +8,7 @@ app = Flask(__name__)
 def main():
     if not request.is_json:
         print("request isn't json")
-        return 'BUBBLES ARE BUBBLING AND THIS IS PROOF'
+        return 'BUBBLES needs JSON.'
     json = request.get_json()
     # print("REQUEST JSON", json)
     if 'challenge' in json:
