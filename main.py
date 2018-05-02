@@ -8,7 +8,7 @@ app = Flask(__name__)
 def main():
     if not request.is_json:
         print("request isn't json")
-        return
+        return 'BUBBLES ARE BUBBLING AND THIS IS PROOF'
     json = request.get_json()
     # print("REQUEST JSON", json)
     if 'challenge' in json:
@@ -30,7 +30,7 @@ def main():
             # print("INITIATING BUBBLES!!!", info)
             th = Thread(target=initiate_bubbles, args=(info,))
             th.start()
-    return ''
+    return 'BUBBLES.'
 
 if __name__ == "__main__":
     # Only for debugging while developing
