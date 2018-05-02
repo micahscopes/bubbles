@@ -105,7 +105,7 @@ def initiate_bubbles(info):
     channel = info['channel']
 
     started_at = time.time()
-    print("OH")
+    # print("OH")
     countdown_duration = info['countdown']
     if countdown_duration == 0:
         # set a default countdown duration
@@ -125,7 +125,7 @@ def initiate_bubbles(info):
         channel=channel
     )
 
-    print("PROMPT:", str(prompt))
+    # print("PROMPT:", str(prompt))
     time_left_now = countdown_duration
     time_left_str = None
     counting_down = True
@@ -145,10 +145,11 @@ def initiate_bubbles(info):
                 text=BUBBLES_PROMPT(time_left_str, info)
             )
 
-            print("remaining time: ", time_left_now)
-            print("time update response", updating_timer_response)
+            # print("remaining time: ", time_left_now)
+            # print("time update response", updating_timer_response)
         else:
-            print("string didn't change")
+            # print("string didn't change")
+            pass
 
         time_left_now = ceil(started_at + countdown_duration - time.time())
         snooze_time = 60  # this will change below
@@ -158,7 +159,7 @@ def initiate_bubbles(info):
             snooze_time = 0.25
 
         time.sleep(snooze_time)
-        print("snoozing for", snooze_time, "seconds")
+        # print("snoozing for", snooze_time, "seconds")
 
         if time_left_now < 0:
             # exit the loop
@@ -182,7 +183,7 @@ def blow_bubbles(info, prompt):
     users = set.union(*[set(e['users']) for e in emoji_reactions])
     try:
         users.remove(bot)
-        print("removed bot", bot, "from users")
+        # print("removed bot", bot, "from users")
     except Exception as e:
         print(e)
 
@@ -203,7 +204,7 @@ def blow_bubbles(info, prompt):
                 except Exception as e:
                     pass
             groups.append(group)
-        print(groups)
+        # print(groups)
 
         group_number = 0
         while len(groups) > 0:
@@ -231,16 +232,16 @@ def blow_bubbles(info, prompt):
                     "conversations.open",
                     users=",".join(group)
                 )
-                print('attempting to open group conversation for',
-                      ",".join(group), 'with bot', bot)
-                print(bubble)
-                print(SC.api_call(
+                # print('attempting to open group conversation for',
+                #       ",".join(group), 'with bot', bot)
+                # print(bubble)
+                SC.api_call(
                     "chat.postMessage",
                     # thread_ts=bubble['ts'],
                     channel=bubble['channel']['id'],
                     text=', '.join(
                         [f'<@{uid}>' for uid in group]) + " :speech_balloon:"
-                ))
+                )
 
     finish_pending_bubbles(
         prompt['ts'], prompt['channel'],

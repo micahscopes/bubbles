@@ -1,14 +1,16 @@
 from flask import Flask, request
 from threading import Thread
 from slackclient import SlackClient
-from src.bubbles import initiate_bubbles, parse_message, finish_pending_bubbles, give_help
+from bubbles import initiate_bubbles, parse_message, finish_pending_bubbles, give_help
 app = Flask(__name__)
 
 @app.route('/',methods=['POST','GET'])
 def main():
     if not request.is_json:
+        print("request isn't json")
         return
     json = request.get_json()
+    # print("REQUEST JSON", json)
     if 'challenge' in json:
         print('received challenge...')
         return str(json['challenge'])
@@ -17,9 +19,9 @@ def main():
 
     e = json['event']
     if e['type'] == 'app_mention' and 'user' in e and e['user'] != bot:
-        print(json)
+        # print(json)
         info = parse_message(json)
-
+        print(info)
         if 'cancel' in info:
             finish_pending_bubbles(info['cancel'], info['channel'])
         elif 'help' in info:
@@ -29,3 +31,7 @@ def main():
             th = Thread(target=initiate_bubbles, args=(info,))
             th.start()
     return ''
+
+if __name__ == "__main__":
+    # Only for debugging while developing
+    app.run(host='0.0.0.0', debug=True, port=80)
