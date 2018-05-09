@@ -6,6 +6,7 @@ import datetime
 import ago
 import re
 import shelve
+import random
 
 
 def BUBBLES_PROMPT(t='', info={}): 
@@ -191,18 +192,16 @@ def blow_bubbles(info, prompt):
     if number_of_groups:
         pass
     else:
-        leftovers = len(users) % size if len(users) > size else 0
+        leftover_users = len(users) % size if len(users) > size else 0
 
         while len(users) >= size:
             group = set()
-            if leftovers > 0:  # then there's an odd one
+            if leftover_users > 0:
+                # add one of our leftover_user to this group
                 size += 1
-                leftovers -= 1
-            for _ in range(size):
-                try:
-                    group.add(users.pop())
-                except Exception as e:
-                    pass
+                leftover_users -= 1
+            group = random.sample(users, size)
+            users.difference_update(group)
             groups.append(group)
         # print(groups)
 
