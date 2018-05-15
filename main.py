@@ -2,6 +2,9 @@ from flask import Flask, request
 from threading import Thread
 from slackclient import SlackClient
 from bubbles import initiate_bubbles, parse_message, finish_pending_bubbles, give_help
+import logging
+logging.basicConfig(level=logging.INFO)
+
 app = Flask(__name__)
 
 @app.route('/',methods=['POST','GET'])

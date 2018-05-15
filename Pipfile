@@ -17,4 +17,3 @@ dateparser = "*"
 [dev-packages]
 
 pylint = "*"
-"autopep8" = "*"

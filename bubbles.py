@@ -7,15 +7,20 @@ import ago
 import re
 import shelve
 import random
+from flask.logging import default_handler
+import logging
+logger = logging.getLogger()
 
 
-def BUBBLES_PROMPT(t='', info={}): 
+
+def BUBBLES_PROMPT(t='', info={}):
     if info.get('size'):
         return f'_*Bubbles of {info.get("size")}! :radio_button: {t}*_'
     elif info.get('quantity'):
         return f'_*{info.get("quantity")} bubbles! :radio_button: {t}*_'
     else:
         return f'_*Bubbles! :radio_button: {t}*_'
+
 
 BUBBLES_CANCELLED = "These bubbles got popped."
 
@@ -117,6 +122,7 @@ def initiate_bubbles(info):
         channel=channel,
         text=BUBBLES_PROMPT()
     )
+
     queue_pending_bubbles(prompt['ts'])
 
     SC.api_call(
@@ -171,6 +177,7 @@ def initiate_bubbles(info):
 
 def blow_bubbles(info, prompt):
     size = info.get('size')
+    exclusive = info.get('exclusive')
     number_of_groups = info.get('quantity')
     bot = info['bot']
 
@@ -182,65 +189,77 @@ def blow_bubbles(info, prompt):
     )['message']['reactions']
 
     users = set.union(*[set(e['users']) for e in emoji_reactions])
+    users.update(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+                  'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'])
     try:
         users.remove(bot)
-        # print("removed bot", bot, "from users")
     except Exception as e:
-        print(e)
+        pass
+
+    logger.info("blowing bubbles for prompt %s", str(info))
+    logger.info("with users %s", str(users))
 
     groups = []
-    if number_of_groups:
-        pass
-    else:
+
+    if number_of_groups and not size:
+        size = len(users) // number_of_groups
+
+    leftover_users = 0
+    try:
         leftover_users = len(users) % size if len(users) > size else 0
+    except Exception as e:
+        pass
 
-        while len(users) >= size:
-            group = set()
-            if leftover_users > 0:
-                # add one of our leftover_user to this group
-                size += 1
-                leftover_users -= 1
-            group = random.sample(users, size)
-            users.difference_update(group)
-            groups.append(group)
-        # print(groups)
+    logger.info("leftover users %i", leftover_users)
+    while len(users) >= size:
+        group = set()
+        if leftover_users > 0 and not exclusive:
+            # add one of our leftover_user to this group
+            size += 1
+            leftover_users -= 1
+        group = random.sample(users, size)
+        users.difference_update(group)
+        groups.append(group)
+    # print(groups)
 
-        group_number = 0
-        while len(groups) > 0:
-            group = groups.pop()
-            if group:
-                group_number += 1
+    logger.info("and bubbles %s", str(groups))
 
-            if(info['type'] == 'threaded'):
-                bubble = SC.api_call(
-                    "chat.postMessage",
-                    channel=info['channel'],
-                    text=f'bubble # {group_number}... (' + ', '.join(
-                        [f'<@{uid}>' for uid in group]) + ')'
-                )
+    group_number = 0
+    while len(groups) > 0:
+        group = groups.pop()
+        if group:
+            group_number += 1
 
-                SC.api_call(
-                    "chat.postMessage",
-                    thread_ts=bubble['ts'],
-                    channel=info['channel'],
-                    text=', '.join(
-                        [f'<@{uid}>' for uid in group]) + " :speech_balloon:"
-                )
-            else:
-                bubble = SC.api_call(
-                    "conversations.open",
-                    users=",".join(group)
-                )
-                # print('attempting to open group conversation for',
-                #       ",".join(group), 'with bot', bot)
-                # print(bubble)
-                SC.api_call(
-                    "chat.postMessage",
-                    # thread_ts=bubble['ts'],
-                    channel=bubble['channel']['id'],
-                    text=', '.join(
-                        [f'<@{uid}>' for uid in group]) + " :speech_balloon:"
-                )
+        if(info['type'] == 'threaded'):
+            bubble = SC.api_call(
+                "chat.postMessage",
+                channel=info['channel'],
+                text=f'bubble # {group_number}... (' + ', '.join(
+                    [f'<@{uid}>' for uid in group]) + ')'
+            )
+
+            SC.api_call(
+                "chat.postMessage",
+                thread_ts=bubble['ts'],
+                channel=info['channel'],
+                text=', '.join(
+                    [f'<@{uid}>' for uid in group]) + " :speech_balloon:"
+            )
+        else:
+            bubble = SC.api_call(
+                "conversations.open",
+                users=",".join(group)
+            )
+            # print('attempting to open group conversation for',
+            #       ",".join(group), 'with bot', bot)
+            # print(bubble)
+            SC.api_call(
+                "chat.postMessage",
+                # thread_ts=bubble['ts'],
+                channel=bubble['channel']['id'],
+                text=', '.join(
+                    [f'<@{uid}>' for uid in group]) + " :speech_balloon:"
+            )
 
     finish_pending_bubbles(
         prompt['ts'], prompt['channel'],
@@ -265,13 +284,14 @@ PROMPTS = r"(?:.*\:\n(?P<prompts>.*))"
 
 
 def parse_message(json):
+    msg = json['event']['text'].lower()
     info = {
         'channel': json['event']['channel'],
         'bot': json['authed_users'][0],
         'text': json['event']['text'],
-        'user': json['event']['user']
+        'user': json['event']['user'],
+        'msg': msg
     }
-    msg = json['event']['text'].lower()
 
     thread_ts = json['event']['thread_ts'] if 'thread_ts' in json['event'] else None
     if thread_ts and (
