@@ -189,8 +189,7 @@ def blow_bubbles(info, prompt):
     )['message']['reactions']
 
     users = set.union(*[set(e['users']) for e in emoji_reactions])
-    users.update(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
-                  'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'])
+
     try:
         users.remove(bot)
     except Exception as e:
