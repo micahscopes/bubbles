@@ -47,7 +47,9 @@ def give_help(channel, user, timestamp=None):
         "chat.postMessage",
         channel=channel,
         text=f'<@{user}> Here\'s how to talk to @bubbles:\n ' +
-        '''e.g. `@bubbles of 3 in 20 seconds`.'''
+        '''e.g.
+ - `@bubbles of 3 in 20 seconds`.
+ - `blow 3 @bubbles 10 minutes`.'''
     )
 
 
@@ -268,7 +270,7 @@ def blow_bubbles(info, prompt):
     return True
 
 
-QUANTITY = r"(?:(?:(?:blow)|(?:create)|(?:make)|(?:spawn)|(?:prepare)|(?:synthesize)|(?:give\sus))\s(?P<number>\d*))"
+QUANTITY = r"(?:(?:(?:blow)|(?:create)|(?:make)|(?:spawn)|(?:prepare)|(?:synthesize)|(?:give\sus)|(?:let\sus\shave))\s(?P<number>\d*))"
 SIZE = r"(?:.*?of\s(?P<size>[\d*\s(or)\-]*))"
 SECONDS = r"([\d\.\,]+)\s*(?:s(?:ec)*(?:ond)*(?:s)*)"
 MINUTES = r"([\d\.\,]+)\s*(?:m(?:in)*(?:utes)*(?:s)*)"
