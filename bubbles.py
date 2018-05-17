@@ -176,6 +176,31 @@ def initiate_bubbles(info):
 
     blow_bubbles(info, prompt)
 
+def tabulate_bubbles_for_users(users, size, exclusive, number_of_groups):
+    groups = []
+
+    if number_of_groups and not size:
+        size = len(users) // number_of_groups
+
+    leftover_users = 0
+    try:
+        leftover_users = len(users) % size if len(users) > size else 0
+    except Exception as e:
+        pass
+
+    logger.info("leftover users %i", leftover_users)
+    while len(users) >= size:
+        group = set()
+        size_of_this_group = size
+        if leftover_users > 0 and not exclusive:
+            # add one of our leftover_user to this group
+            size_of_this_group += 1
+            leftover_users -= 1
+        group = random.sample(users, sizeOfThisGroup)
+        users.difference_update(group)
+        groups.append(group)
+    # print(groups)
+    return groups
 
 def blow_bubbles(info, prompt):
     size = info.get('size')
@@ -200,29 +225,7 @@ def blow_bubbles(info, prompt):
     logger.info("blowing bubbles for prompt %s", str(info))
     logger.info("with users %s", str(users))
 
-    groups = []
-
-    if number_of_groups and not size:
-        size = len(users) // number_of_groups
-
-    leftover_users = 0
-    try:
-        leftover_users = len(users) % size if len(users) > size else 0
-    except Exception as e:
-        pass
-
-    logger.info("leftover users %i", leftover_users)
-    while len(users) >= size:
-        group = set()
-        if leftover_users > 0 and not exclusive:
-            # add one of our leftover_user to this group
-            size += 1
-            leftover_users -= 1
-        group = random.sample(users, size)
-        users.difference_update(group)
-        groups.append(group)
-    # print(groups)
-
+    groups = tabulate_bubbles_for_users(users, size, exclusive, number_of_groups)
     logger.info("and bubbles %s", str(groups))
 
     group_number = 0
