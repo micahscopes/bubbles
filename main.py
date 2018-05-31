@@ -7,6 +7,10 @@ logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
+@app.route('/pump_bubbles_artificial_heart', methods=['POST','GET'])
+def heart_pump():
+    return 'yes'
+
 @app.route('/',methods=['POST','GET'])
 def main():
     if not request.is_json:
