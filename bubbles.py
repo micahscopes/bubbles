@@ -196,7 +196,7 @@ def tabulate_bubbles_for_users(users, size, exclusive, number_of_groups):
             # add one of our leftover_user to this group
             size_of_this_group += 1
             leftover_users -= 1
-        group = random.sample(users, sizeOfThisGroup)
+        group = random.sample(users, size_of_this_group)
         users.difference_update(group)
         groups.append(group)
     # print(groups)
