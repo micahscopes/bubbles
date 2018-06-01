@@ -7,8 +7,12 @@ logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
-@app.route('/pump_bubbles_artificial_heart', methods=['POST','GET'])
-def heart_pump():
+@app.route('/readiness_check', methods=['GET'])
+def readiness_check():
+    return 'yes'
+
+@app.route('/health_check', methods=['GET'])
+def health_check():
     return 'yes'
 
 @app.route('/',methods=['POST','GET'])
