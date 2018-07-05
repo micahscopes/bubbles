@@ -1,4 +1,5 @@
 import os
+import warnings
 from slackclient import SlackClient
 from math import floor, ceil
 import time
@@ -11,13 +12,11 @@ from flask.logging import default_handler
 import logging
 logger = logging.getLogger()
 
-
-
-def BUBBLES_PROMPT(t='', info={}):
-    if info.get('size'):
-        return f'_*Bubbles of {info.get("size")}! :radio_button: {t}*_'
-    elif info.get('quantity'):
-        return f'_*{info.get("quantity")} bubbles! :radio_button: {t}*_'
+def BUBBLES_PROMPT(t='', context={}):
+    if context.get('size'):
+        return f'_*Bubbles of {context.get("size")}! :radio_button: {t}*_'
+    elif context.get('quantity'):
+        return f'_*{context.get("quantity")} bubbles! :radio_button: {t}*_'
     else:
         return f'_*Bubbles! :radio_button: {t}*_'
 
@@ -30,17 +29,11 @@ try:
     BOT_TOKEN = os.environ['BUBBLES_BOT_TOKEN']
     SC = SlackClient(BOT_TOKEN)
 except Exception as e:
-    raise Exception(
+    warnings.warn(
         "Couldn't authenticate to slack... Please set BUBBLES_BOT_TOKEN in your environment!")
 
 PENDING_BUBBLES_DB = 'pending_bubbles.shelf'
-
-# def get_pending_bubbles(timestamp):
-#     db = shelve.open(PENDING_BUBBLES_DB)
-#     bubble_prompt = db[timestamp]
-#     db.close()
-#     return bubble_prompt
-
+BUBBLES_STATS_DB = 'bubbles_stats.shelf'
 
 def give_help(channel, user, timestamp=None):
     SC.api_call(
@@ -109,12 +102,12 @@ def countdown_string(t):
     return s
 
 
-def initiate_bubbles(info):
-    channel = info['channel']
+def initiate_bubbles(context):
+    channel = context['channel']
 
     started_at = time.time()
     # print("OH")
-    countdown_duration = info['countdown']
+    countdown_duration = context['countdown']
     if countdown_duration == 0:
         # set a default countdown duration
         countdown_duration = DEFAULT_COUNTDOWN_TIME
@@ -151,7 +144,7 @@ def initiate_bubbles(info):
                 "chat.update",
                 ts=prompt['ts'],
                 channel=channel,
-                text=BUBBLES_PROMPT(time_left_str, info)
+                text=BUBBLES_PROMPT(time_left_str, context)
             )
 
             # print("remaining time: ", time_left_now)
@@ -174,24 +167,25 @@ def initiate_bubbles(info):
             # exit the loop
             counting_down = False
 
-    blow_bubbles(info, prompt)
+    blow_bubbles(context, prompt)
 
-def tabulate_bubbles_for_users(users, size, exclusive, number_of_groups):
+def tabulate_bubbles_for_users(users, default_size, exclusive=None, number_of_groups=None):
+    users = set(users)
     groups = []
 
-    if number_of_groups and not size:
-        size = len(users) // number_of_groups
+    if number_of_groups and not default_size:
+        default_size = len(users) // number_of_groups
 
     leftover_users = 0
     try:
-        leftover_users = len(users) % size if len(users) > size else 0
+        leftover_users = len(users) % default_size if len(users) > default_size else 0
     except Exception as e:
         pass
 
     logger.info("leftover users %i", leftover_users)
-    while len(users) >= size:
+    while len(users) >= default_size:
         group = set()
-        size_of_this_group = size
+        size_of_this_group = default_size
         if leftover_users > 0 and not exclusive:
             # add one of our leftover_user to this group
             size_of_this_group += 1
@@ -202,27 +196,30 @@ def tabulate_bubbles_for_users(users, size, exclusive, number_of_groups):
     # print(groups)
     return groups
 
-def blow_bubbles(info, prompt):
-    size = info.get('size')
-    exclusive = info.get('exclusive')
-    number_of_groups = info.get('quantity')
-    bot = info['bot']
-
-    emoji_reactions = SC.api_call(
-        'reactions.get',
-        channel=info['channel'],
-        timestamp=prompt['ts'],
-        full=True
-    )['message']['reactions']
-
-    users = set.union(*[set(e['users']) for e in emoji_reactions])
-
+def users_from_emoji_reactions(reactions, bot='UBUBBLES'):
+    users = set.union(*[set(e['users']) for e in reactions])
     try:
         users.remove(bot)
     except Exception as e:
         pass
+    return users
 
-    logger.info("blowing bubbles for prompt %s", str(info))
+def blow_bubbles(context, prompt):
+    size = context.get('size')
+    exclusive = context.get('exclusive')
+    number_of_groups = context.get('quantity')
+
+    emoji_reactions = SC.api_call(
+        'reactions.get',
+        channel=context['channel'],
+        timestamp=prompt['ts'],
+        full=True
+    )['message']['reactions']
+
+    bot_user = context['bot']
+    users = users_from_emoji_reactions(emoji_reactions, bot_user)
+
+    logger.info("blowing bubbles for prompt %s", str(context))
     logger.info("with users %s", str(users))
 
     groups = tabulate_bubbles_for_users(users, size, exclusive, number_of_groups)
@@ -234,10 +231,10 @@ def blow_bubbles(info, prompt):
         if group:
             group_number += 1
 
-        if(info['type'] == 'threaded'):
+        if(context['type'] == 'threaded'):
             bubble = SC.api_call(
                 "chat.postMessage",
-                channel=info['channel'],
+                channel=context['channel'],
                 text=f'bubble # {group_number}... (' + ', '.join(
                     [f'<@{uid}>' for uid in group]) + ')'
             )
@@ -245,7 +242,7 @@ def blow_bubbles(info, prompt):
             SC.api_call(
                 "chat.postMessage",
                 thread_ts=bubble['ts'],
-                channel=info['channel'],
+                channel=context['channel'],
                 text=', '.join(
                     [f'<@{uid}>' for uid in group]) + " :speech_balloon:"
             )
@@ -254,12 +251,9 @@ def blow_bubbles(info, prompt):
                 "conversations.open",
                 users=",".join(group)
             )
-            # print('attempting to open group conversation for',
-            #       ",".join(group), 'with bot', bot)
-            # print(bubble)
+
             SC.api_call(
                 "chat.postMessage",
-                # thread_ts=bubble['ts'],
                 channel=bubble['channel']['id'],
                 text=', '.join(
                     [f'<@{uid}>' for uid in group]) + " :speech_balloon:"
@@ -272,31 +266,27 @@ def blow_bubbles(info, prompt):
 
     return True
 
+# natural language processing brought to you by regex!
+QUANTITY_PATTERN = r"(?:(?:(?:blow)|(?:create)|(?:make)|(?:spawn)|(?:prepare)|(?:synthesize)|(?:give\sus)|(?:let\sus\shave))\s(?P<number>\d*))"
+SIZE_PATTERN = r"(?:.*?of\s(?P<size>[\d*\s(or)\-]*))"
+SECONDS_PATTERN = r"([\d\.\,]+)\s*(?:s(?:ec)*(?:ond)*(?:s)*)"
+MINUTES_PATTERN = r"([\d\.\,]+)\s*(?:m(?:in)*(?:utes)*(?:s)*)"
+HOURS_PATTERN = r"([\d\.\,]+)\s*(?:h(?:ou)*(?:r)*(?:s)*)"
+DM_PATTERN = r"(direct\smessage(?:s)*|dm(?:s)*)"
+THREADS_PATTERN = r"(threads|threaded)"
+PROMPTS_PATTERN = r"(?:.*\:\n(?P<prompts>.*))"
 
-QUANTITY = r"(?:(?:(?:blow)|(?:create)|(?:make)|(?:spawn)|(?:prepare)|(?:synthesize)|(?:give\sus)|(?:let\sus\shave))\s(?P<number>\d*))"
-SIZE = r"(?:.*?of\s(?P<size>[\d*\s(or)\-]*))"
-SECONDS = r"([\d\.\,]+)\s*(?:s(?:ec)*(?:ond)*(?:s)*)"
-MINUTES = r"([\d\.\,]+)\s*(?:m(?:in)*(?:utes)*(?:s)*)"
-HOURS = r"([\d\.\,]+)\s*(?:h(?:ou)*(?:r)*(?:s)*)"
-DM = r"(direct\smessage(?:s)*|dm(?:s)*)"
-THREADS = r"(threads|threaded)"
-# SECONDS = r"(?:.*?(?:(?:after)|(?:in)*)\s(?P<countdown>\d*\s*(?:(?:min(?:ute)*(?:s)*|(?:sec(?:ond)*(?:s)*)|(?:h(?:ou)*(?:r)*(?:s)*))*)))"
-# SECONDS = r"(?:.*?(?:(?:after)|(?:in)*)\s(?P<countdown>\d*\s*(?:(?:min(?:ute)*(?:s)*|(?:sec(?:ond)*(?:s)*)|(?:h(?:ou)*(?:r)*(?:s)*))*)))"
-PROMPTS = r"(?:.*\:\n(?P<prompts>.*))"
-
-# basically just extract the info.  if the user decides to use odd grammar, that's on them.
-
-
-def parse_message(json):
+# basically just extract whatever info you can get.  if the user decides to use odd grammar, that's on them.
+def understand_message(json):
     msg = json['event']['text'].lower()
-    info = {
+    context = {
         'channel': json['event']['channel'],
         'bot': json['authed_users'][0],
         'text': json['event']['text'],
         'user': json['event']['user'],
         'msg': msg
     }
-
+    
     thread_ts = json['event']['thread_ts'] if 'thread_ts' in json['event'] else None
     if thread_ts and (
         "cancel" in msg or
@@ -306,64 +296,65 @@ def parse_message(json):
         "pop" in msg
     ):
         print("CANCELLING", thread_ts)
-        info['cancel'] = thread_ts
-        return info
-
+        context['cancel'] = thread_ts
+        return context
+    
     user_intention_count = 0
     try:
-        info['quantity'] = int(re.match(QUANTITY, msg)[1])
+        context['quantity'] = int(re.match(QUANTITY_PATTERN, msg)[1])
         user_intention_count += 1
     except Exception as e:
         pass
 
     try:
-        info['seconds'] = float(re.search(SECONDS, msg)[1])
+        context['seconds'] = float(re.search(SECONDS_PATTERN, msg)[1])
         user_intention_count += 1
     except Exception as e:
         print(e)
-        info['seconds'] = 0
+        context['seconds'] = 0
 
     try:
-        info['minutes'] = float(re.search(MINUTES, msg)[1])
+        context['minutes'] = float(re.search(MINUTES_PATTERN, msg)[1])
         user_intention_count += 1
     except Exception as e:
-        info['minutes'] = 0
+        context['minutes'] = 0
 
     try:
-        info['hours'] = float(re.search(HOURS, msg)[1])
+        context['hours'] = float(re.search(HOURS_PATTERN, msg)[1])
         user_intention_count += 1
     except Exception as e:
-        info['hours'] = 0
+        context['hours'] = 0
 
     try:
-        info['prompts'] = re.match(PROMPTS, msg, re.S)[1].split('\n')
+        context['prompts'] = re.match(PROMPTS_PATTERN, msg, re.S)[1].split('\n')
         user_intention_count += 1
     except Exception as e:
         pass
 
     try:
-        info['type'] = 'dm' if re.search(DM, msg, re.S)[1] else None
+        context['type'] = 'dm' if re.search(DM_PATTERN, msg, re.S)[1] else None
         user_intention_count += 1
     except Exception as e:
         print('error', e)
-        info['type'] = None
+        context['type'] = None
 
     try:
-        info['type'] = 'threads' if re.search(THREADS, msg, re.S)[1] else 'dm'
+        context['type'] = 'threaded' if re.search(THREADS_PATTERN, msg, re.S)[1] else 'dm'
         user_intention_count += 1
     except Exception as e:
-        info['type'] = 'threads' if not info['type'] else info['type']
+        context['type'] = 'threaded' if not 'type' in context else context['type']
 
     try:
-        info['size'] = int(re.match(SIZE, msg)[1])
+        context['size'] = int(re.match(SIZE_PATTERN, msg)[1])
         user_intention_count += 1
     except Exception as e:
-        info['size'] = None if info.get(
-            'quantity') or info.get('prompts') else 2
+        context['size'] = None if context.get(
+            'quantity') or context.get('prompts') else 2
 
-    info['countdown'] = datetime.timedelta(
-        minutes=info['minutes'], seconds=info['seconds'], hours=info['hours']).seconds
+    context['countdown'] = datetime.timedelta(
+        minutes=context['minutes'], seconds=context['seconds'], hours=context['hours']\
+    ).seconds
 
     if user_intention_count == 0:
-        info['help'] = True
-    return info
+        context['help'] = True
+    return context

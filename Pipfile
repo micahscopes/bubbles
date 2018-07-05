@@ -1,19 +1,18 @@
 [[source]]
-
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
-
 slackclient = "*"
 flask = "*"
 arrow = "*"
 ago = "*"
 dateparser = "*"
-
+ipdb = "*"
 
 [dev-packages]
-
 pylint = "*"
+pytest = "*"
+pytest-watch = "*"
+ipdb = "*"

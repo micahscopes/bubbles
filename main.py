@@ -1,7 +1,7 @@
 from flask import Flask, request
 from threading import Thread
 from slackclient import SlackClient
-from bubbles import initiate_bubbles, parse_message, finish_pending_bubbles, give_help
+from bubbles import initiate_bubbles, understand_message, finish_pending_bubbles, give_help
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -31,7 +31,7 @@ def main():
     e = json['event']
     if e['type'] == 'app_mention' and 'user' in e and e['user'] != bot:
         # print(json)
-        info = parse_message(json)
+        info = understand_message(json)
         print(info)
         if 'cancel' in info:
             finish_pending_bubbles(info['cancel'], info['channel'])
