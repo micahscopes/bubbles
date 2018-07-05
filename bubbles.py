@@ -377,6 +377,12 @@ def understand_message(json):
     ).seconds
 
     if user_intention_count == 0:
-        context['small_talk'] = True
+        help_words = ['help', 'how', 'what', 'docs', 'man', 'documentation']
+        for h in help_words:
+            if h in msg.lower():
+                context['help'] = True
+                break
+        if not context.get('help'):
+            context['small_talk'] = True
 
     return context

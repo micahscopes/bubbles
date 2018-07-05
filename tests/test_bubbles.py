@@ -32,9 +32,6 @@ def test_small_talk():
     message = fake_user_message("Hi @bubbles")
     assert bubbles.understand_message(message).get('small_talk')
 
-    message = fake_user_message("@bubbles, how are you?")
-    assert bubbles.understand_message(message).get('small_talk')
-
     message = fake_user_message("good morning, @bubbles")
     assert bubbles.understand_message(message).get('small_talk')
 
@@ -51,5 +48,11 @@ def test_small_talk():
     assert not bubbles.understand_message(message).get('small_talk')
 
     message = fake_user_message("@bubbles in 3 minutes")
+    assert not bubbles.understand_message(message).get('small_talk')
+
+    message = fake_user_message("Help @bubbles")
+    assert not bubbles.understand_message(message).get('small_talk')
+
+    message = fake_user_message("@bubbles how")
     assert not bubbles.understand_message(message).get('small_talk')
 
