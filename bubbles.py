@@ -46,6 +46,27 @@ def give_help(channel, user, timestamp=None):
     )
 
 
+def small_talk(channel, user, timestamp=None):
+    output = 'Blub'
+    output += ' blub' * random.randint(0, 4)
+    rand = random.random()
+    if rand > 0.95:
+        output += '!'
+    elif rand > 0.9:
+        output += ', '
+        output += ' blub' * random.randint(2, 4)
+        output += '.' if random.random() > 0.5 else '?'
+    elif rand > 0.70:
+        output += '?'
+    else:
+        output += '.'
+    SC.api_call(
+        "chat.postMessage",
+        channel=channel,
+        text=output,
+    )
+
+
 def finish_pending_bubbles(timestamp, channel, message=None):
     db = shelve.open(PENDING_BUBBLES_DB)
 
@@ -356,5 +377,6 @@ def understand_message(json):
     ).seconds
 
     if user_intention_count == 0:
-        context['help'] = True
+        context['small_talk'] = True
+
     return context

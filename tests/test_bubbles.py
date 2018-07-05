@@ -24,3 +24,32 @@ def test_group_tabulation():
 
     assert True
 
+
+def test_small_talk():
+    message = fake_user_message("hello @bubbles")
+    assert bubbles.understand_message(message).get('small_talk')
+
+    message = fake_user_message("Hi @bubbles")
+    assert bubbles.understand_message(message).get('small_talk')
+
+    message = fake_user_message("@bubbles, how are you?")
+    assert bubbles.understand_message(message).get('small_talk')
+
+    message = fake_user_message("good morning, @bubbles")
+    assert bubbles.understand_message(message).get('small_talk')
+
+    message = fake_user_message("good afternoon, @bubbles")
+    assert bubbles.understand_message(message).get('small_talk')
+
+    message = fake_user_message("@bubbles, Shut up!")
+    assert bubbles.understand_message(message).get('small_talk')
+
+    message = fake_user_message("@bubbles of 2 in 10s")
+    assert not bubbles.understand_message(message).get('small_talk')
+
+    message = fake_user_message("@bubbles of 5")
+    assert not bubbles.understand_message(message).get('small_talk')
+
+    message = fake_user_message("@bubbles in 3 minutes")
+    assert not bubbles.understand_message(message).get('small_talk')
+

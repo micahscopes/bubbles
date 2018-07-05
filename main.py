@@ -37,6 +37,8 @@ def main():
             finish_pending_bubbles(info['cancel'], info['channel'])
         elif 'help' in info:
             give_help(info['channel'], info['user'])
+        elif 'small_talk' in info:
+            small_talk(info['channel'], info['user'])
         else:
             # print("INITIATING BUBBLES!!!", info)
             th = Thread(target=initiate_bubbles, args=(info,))

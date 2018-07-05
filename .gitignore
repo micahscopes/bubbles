@@ -1,2 +1,4 @@
 **/*__pycache__*
 app.yaml
+.venv
+.pytest_cache
