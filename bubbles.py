@@ -53,7 +53,7 @@ def small_talk(channel, user, timestamp=None):
     if rand > 0.95:
         output += '!'
     elif rand > 0.9:
-        output += ', '
+        output += ','
         output += ' blub' * random.randint(2, 4)
         output += '.' if random.random() > 0.5 else '?'
     elif rand > 0.70:
